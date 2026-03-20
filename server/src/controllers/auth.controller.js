@@ -7,7 +7,7 @@ const generateTokens = (userId) => {
   const accessToken = jwt.sign(
     { id: userId },
     process.env.JWT_SECRET,
-    { expiresIn: '15m' }
+    { expiresIn: '7d' }
   )
   const refreshToken = jwt.sign(
     { id: userId },
@@ -117,5 +117,50 @@ export const getMe = async (req, res) => {
     res.json(user)
   } catch (err) {
     res.status(500).json({ message: 'Server error' })
+  }
+}
+
+
+// Refresh 
+export const refreshToken = async (req, res) => {
+  try {
+    const token = req.cookies.refreshToken
+    if (!token) {
+      return res.status(401).json({ message: 'No refresh token' })
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET)
+    const user = await User.findById(decoded.id).select('-password')
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' })
+    }
+
+    // Issue a fresh access token
+    const newAccessToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '15m' }
+    )
+
+    // Also rotate the refresh token for security
+    const newRefreshToken = jwt.sign(
+      { id: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: '7d' }
+    )
+
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: false,       // true in production
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+
+    res.json({ accessToken: newAccessToken })
+
+  } catch (err) {
+    // Refresh token itself expired — full logout required
+    res.clearCookie('refreshToken')
+    res.status(401).json({ message: 'Session expired, please login again' })
   }
 }

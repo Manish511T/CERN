@@ -1,49 +1,45 @@
 import express from 'express'
 import { createServer } from 'http'
-import { Server } from 'socket.io'
 import mongoose from 'mongoose'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import dotenv from 'dotenv'
-import authRoutes from './routes/auth.routes.js'
-import sosRoutes from './routes/sos.routes.js'
-import { initSocket } from './socket.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { initIO } from './socket/io.js'
+import { initSocket } from './socket.js'
+import authRoutes from './routes/auth.routes.js'
+import sosRoutes from './routes/sos.routes.js'
 
 dotenv.config()
 
-const app = express()
-const httpServer = createServer(app)  // wrap express in http server for socket.io
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// Socket.io setup
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL,
-    credentials: true
-  }
-})
+const app = express()
+const httpServer = createServer(app)
 
-// Make io accessible in controllers
-export { io }
-
-// Initialize socket handlers
-initSocket(io)
-
-// Middleware
-app.use(cors({
+const io = initIO(httpServer, {
   origin: process.env.CLIENT_URL,
   credentials: true
-}))
+})
+
+initSocket(io)
+
+const corsOptions = {
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}
+
+app.use(cors(corsOptions))
+app.options('/{*path}', cors(corsOptions))   // handle preflight for every route
+
 app.use(express.json())
 app.use(cookieParser())
-
-// Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')))
 
-// Routes
 app.use('/api/auth', authRoutes)
 app.use('/api/sos', sosRoutes)
 
