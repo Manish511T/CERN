@@ -4,6 +4,8 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Register from './pages/Register'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import SOSPage from './pages/SOSPage'
+import VolunteerHistory from './pages/VolunteerHistory'
 
 const App = () => {
   return (
@@ -13,14 +15,9 @@ const App = () => {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/sos" element={<ProtectedRoute><SOSPage /></ProtectedRoute>} />
+          <Route path="/volunteer/history" element={<ProtectedRoute><VolunteerHistory /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

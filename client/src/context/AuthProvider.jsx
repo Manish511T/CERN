@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { AuthContext } from './AuthContext'
 import api from '../api/axios'
+import socket from '../socket/socket'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -10,12 +11,15 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem('accessToken')
     if (token) {
       api.get('/auth/me')
-        .then(res => setUser(res.data))
+        .then(res => {
+          setUser(res.data)
+          // Connect socket and register user
+          socket.connect()
+          socket.emit('register', res.data._id)
+        })
         .catch(() => localStorage.removeItem('accessToken'))
         .finally(() => setLoading(false))
     } else {
-      // Use a resolved promise so the setState happens asynchronously,
-      // same as the .finally() branch above — fixes the linter warning
       Promise.resolve().then(() => setLoading(false))
     }
   }, [])
@@ -23,11 +27,15 @@ export const AuthProvider = ({ children }) => {
   const login = (userData, token) => {
     localStorage.setItem('accessToken', token)
     setUser(userData)
+    // Connect socket after login
+    socket.connect()
+    socket.emit('register', userData.id)
   }
 
   const logout = async () => {
     await api.post('/auth/logout')
     localStorage.removeItem('accessToken')
+    socket.disconnect()
     setUser(null)
   }
 
