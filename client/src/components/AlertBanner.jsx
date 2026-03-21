@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import socket from "../socket/socket";
 import api from "../api/axios";
-import { useAuth } from "../context/useAuth";
-import TrackingMap from "./TrackingMap";
+import { useTracking } from "../context/useTracking";
 
 const AlertBanner = () => {
-  const { user } = useAuth();
+  const { startTracking } = useTracking();
   const [alert, setAlert] = useState(null);
   const [accepting, setAccepting] = useState(false);
-  const [mapData, setMapData] = useState(null); // opens map when set
   const alertRef = useRef(null);
+
   useEffect(() => {
     alertRef.current = alert;
   }, [alert]);
+
   useEffect(() => {
     socket.on("sos:alert", (data) => {
       setAlert(data);
@@ -32,20 +32,21 @@ const AlertBanner = () => {
 
     socket.on("sos:accepted", (data) => {
       if (data.openMap) {
-        const currentAlert = alertRef.current;
-        setMapData({
-          role: "victim",
+        startTracking({
           sosId: data.sosId,
+          role: "victim",
           volunteerId: data.volunteerId,
           volunteerName: data.volunteerName,
-          // Use ref to get latest alert value — no stale closure
-          victimLocation: currentAlert?.location
-            ? {
-                latitude: currentAlert.location.coordinates[1],
-                longitude: currentAlert.location.coordinates[0],
-                address: currentAlert.location.address,
-              }
-            : null,
+          // Use location from server payload — don't rely on alertRef
+          victimLocation:
+            data.victimLocation ||
+            (alertRef.current?.location
+              ? {
+                  latitude: alertRef.current.location.coordinates[1],
+                  longitude: alertRef.current.location.coordinates[0],
+                  address: alertRef.current.location.address,
+                }
+              : null),
         });
         setAlert(null);
       }
@@ -62,13 +63,13 @@ const AlertBanner = () => {
     setAccepting(true);
     try {
       const res = await api.patch(`/sos/accept/${alert.sosId}`);
-      // Open map for volunteer — backend gives us victim coordinates
-      setMapData({
-        role: "volunteer",
+      // Save to global tracking context for volunteer
+      startTracking({
         sosId: alert.sosId,
+        role: "volunteer",
         victimId: res.data.victimId,
         victimName: res.data.victimName,
-        volunteerName: user?.name,
+        volunteerName: res.data.volunteerName,
         victimLocation: res.data.victimLocation,
       });
       setAlert(null);
@@ -88,76 +89,59 @@ const AlertBanner = () => {
       other: "🆘 Emergency",
     })[type] || "🆘 Emergency";
 
+  if (!alert) return null;
+
   return (
-    <>
-      {/* Live tracking map — full screen */}
-      {mapData && (
-        <TrackingMap
-          sosId={mapData.sosId}
-          role={mapData.role}
-          victimLocation={mapData.victimLocation}
-          victimId={mapData.victimId}
-          volunteerName={mapData.volunteerName}
-          onClose={() => setMapData(null)}
-        />
-      )}
-
-      {/* Incoming alert banner */}
-      {alert && !mapData && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
-          <div className="bg-white border-2 border-red-500 rounded-2xl shadow-2xl p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-red-600 font-bold text-sm flex items-center gap-1">
-                <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping mr-1" />
-                EMERGENCY NEARBY
-              </span>
-              <button
-                onClick={() => setAlert(null)}
-                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
-              >
-                ×
-              </button>
-            </div>
-
-            <p className="text-gray-800 font-semibold text-base mb-1">
-              {getEmergencyLabel(alert.emergencyType)}
-            </p>
-
-            {alert.location?.address && (
-              <p className="text-gray-500 text-xs mb-2">
-                {alert.location.address}
-              </p>
-            )}
-
-            {alert.photoUrl && (
-              <img
-                src={`${import.meta.env.VITE_API_URL?.replace("/api", "")}${alert.photoUrl}`}
-                alt="Emergency"
-                className="w-full h-32 object-cover rounded-xl mb-3"
-              />
-            )}
-
-            <div className="flex gap-2 mt-2">
-              {alert.isVolunteer && (
-                <button
-                  onClick={handleAccept}
-                  disabled={accepting}
-                  className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50"
-                >
-                  {accepting ? "Accepting..." : "Accept & Respond"}
-                </button>
-              )}
-              <button
-                onClick={() => setAlert(null)}
-                className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
-              >
-                {alert.isVolunteer ? "Decline" : "Dismiss"}
-              </button>
-            </div>
-          </div>
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+      <div className="bg-white border-2 border-red-500 rounded-2xl shadow-2xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-red-600 font-bold text-sm flex items-center gap-1">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping mr-1" />
+            EMERGENCY NEARBY
+          </span>
+          <button
+            onClick={() => setAlert(null)}
+            className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+          >
+            ×
+          </button>
         </div>
-      )}
-    </>
+
+        <p className="text-gray-800 font-semibold text-base mb-1">
+          {getEmergencyLabel(alert.emergencyType)}
+        </p>
+
+        {alert.location?.address && (
+          <p className="text-gray-500 text-xs mb-2">{alert.location.address}</p>
+        )}
+
+        {alert.photoUrl && (
+          <img
+            src={`${import.meta.env.VITE_API_URL?.replace("/api", "")}${alert.photoUrl}`}
+            alt="Emergency"
+            className="w-full h-32 object-cover rounded-xl mb-3"
+          />
+        )}
+
+        <div className="flex gap-2 mt-2">
+          {alert.isVolunteer && (
+            <button
+              onClick={handleAccept}
+              disabled={accepting}
+              className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50"
+            >
+              {accepting ? "Accepting..." : "Accept & Respond"}
+            </button>
+          )}
+          <button
+            onClick={() => setAlert(null)}
+            className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
+          >
+            {alert.isVolunteer ? "Decline" : "Dismiss"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

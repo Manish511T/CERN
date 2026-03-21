@@ -1,8 +1,7 @@
-import { useAuth } from "../context/useAuth";
-import { useNavigate } from "react-router-dom";
-import AlertBanner from "../components/AlertBanner";
-import useLocationUpdater from "../hooks/useLocationUpdater";
-
+// Replace the current imports at the top with these:
+import { useAuth } from '../context/useAuth'
+import { useNavigate } from 'react-router-dom'
+import useLocationUpdater from '../hooks/useLocationUpdater'
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -18,7 +17,6 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AlertBanner />
 
       <nav className="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
         <span className="text-red-600 font-bold text-lg">🚨 CERN</span>

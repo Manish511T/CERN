@@ -99,6 +99,7 @@ const TrackingMap = ({
   victimId, // used by volunteer to know where to emit
   volunteerName,
   onClose,
+  onEndSession
 }) => {
   const [volunteerPos, setVolunteerPos] = useState(null);
   const [distance, setDistance] = useState(null);
@@ -194,27 +195,21 @@ const TrackingMap = ({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
       {/* Top bar */}
-      <div className="bg-red-600 text-white px-4 py-3 flex items-center justify-between flex-shrink-0">
-        <div>
-          <p className="font-bold text-sm">
-            {role === "volunteer"
-              ? "🦺 Navigate to victim"
-              : "🚨 Help is coming"}
-          </p>
-          <p className="text-red-200 text-xs">
-            {role === "victim"
-              ? volunteerName
-                ? `${volunteerName} is on the way`
-                : "Waiting for volunteer location..."
-              : victimLocation?.address || "Victim location"}
-          </p>
-        </div>
+      <div className="flex gap-2">
         <button
           onClick={onClose}
           className="text-white bg-red-700 hover:bg-red-800 rounded-lg px-3 py-1 text-sm"
         >
-          Close
+          Minimise
         </button>
+        {onEndSession && (
+          <button
+            onClick={onEndSession}
+            className="text-red-200 hover:text-white rounded-lg px-3 py-1 text-sm border border-red-500"
+          >
+            End
+          </button>
+        )}
       </div>
 
       {/* ETA / distance bar */}

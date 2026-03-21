@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import api from "../api/axios";
 import socket from "../socket/socket";
-import TrackingMap from "../components/TrackingMap";
+import { useTracking } from "../context/useTracking";
 
 const EMERGENCY_TYPES = [
   { value: "accident", label: "🚗 Road Accident" },
@@ -28,9 +28,9 @@ const SOSPage = () => {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(null);
   const [countdown, setCountdown] = useState(null);
-  const [mapData, setMapData] = useState(null); // victim's map
 
   const mediaRecorderRef = useRef(null);
+  const { startTracking } = useTracking();
   const chunksRef = useRef([]);
 
   useEffect(() => {
@@ -70,30 +70,23 @@ const SOSPage = () => {
   }, []);
 
   // Listen for volunteer accepting — open map for victim
-  const sentRef = useRef(null);
+  // Replace with this clean version:
   const locationRef = useRef(null);
-
-  // Keep refs in sync with state
-  useEffect(() => {
-    sentRef.current = sent;
-  }, [sent]);
   useEffect(() => {
     locationRef.current = location;
   }, [location]);
 
-  // Register socket listener ONCE — use refs inside to avoid stale closure
   useEffect(() => {
     socket.on("sos:accepted", (data) => {
-      console.log("sos:accepted received on SOSPage:", data);
+      console.log("sos:accepted on SOSPage:", data);
       if (data.openMap) {
-        // Use refs so we always get the latest values
-        // even if sent/location haven't re-triggered this effect
-        setMapData({
-          role: "victim",
+        startTracking({
           sosId: data.sosId,
+          role: "victim",
           volunteerId: data.volunteerId,
           volunteerName: data.volunteerName,
-          victimLocation: locationRef.current,
+          // Use location sent from server — never stale, always correct
+          victimLocation: data.victimLocation || locationRef.current,
         });
       }
     });
@@ -202,22 +195,6 @@ const SOSPage = () => {
       setSending(false);
     }
   };
-
-  // Victim's full screen map
-  if (mapData) {
-    return (
-      <TrackingMap
-        sosId={mapData.sosId}
-        role="victim"
-        victimLocation={mapData.victimLocation}
-        volunteerName={mapData.volunteerName}
-        onClose={() => {
-          setMapData(null);
-          navigate("/dashboard");
-        }}
-      />
-    );
-  }
 
   // Success / waiting screen
   if (sent) {
