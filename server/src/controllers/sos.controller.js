@@ -136,24 +136,30 @@ export const acceptSOS = async (req, res) => {
     sos.acceptedBy = req.user._id
     await sos.save()
 
+    // Build victim location from the SOS record — always accurate
+    const victimLocation = {
+      latitude: sos.location.coordinates[1],
+      longitude: sos.location.coordinates[0],
+      address: sos.location.address || ''
+    }
+
     const triggererSocketId = getSocketId(sos.triggeredBy._id.toString())
     if (triggererSocketId) {
       getIO().to(triggererSocketId).emit('sos:accepted', {
         sosId: sos._id,
         volunteerId: req.user._id,
         volunteerName: req.user.name,
-        openMap: true
+        openMap: true,
+        // Send victim their own location back from DB
+        // so SOSPage doesn't rely on stale local state
+        victimLocation
       })
     }
 
     res.json({
       message: 'SOS accepted',
       sos,
-      victimLocation: {
-        latitude: sos.location.coordinates[1],
-        longitude: sos.location.coordinates[0],
-        address: sos.location.address
-      },
+      victimLocation,
       victimId: sos.triggeredBy._id,
       victimName: sos.triggeredBy.name
     })
