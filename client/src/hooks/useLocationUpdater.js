@@ -1,9 +1,13 @@
 import { useEffect } from 'react'
 import api from '../api/axios'
 
-const useLocationUpdater = (user) => {
+const useLocationUpdater = (user, isOnDuty) => {
   useEffect(() => {
     if (!user) return
+
+    // Users always update location (needed for SOS trigger)
+    // Volunteers only update when on duty
+    if (user.role === 'volunteer' && !isOnDuty) return
 
     const updateLocation = (pos) => {
       api.post('/sos/location', {
@@ -14,12 +18,10 @@ const useLocationUpdater = (user) => {
 
     if (!navigator.geolocation) return
 
-    // Update immediately on load
     navigator.geolocation.getCurrentPosition(updateLocation, (err) => {
       console.warn('GPS error:', err.message)
     })
 
-    // Then keep updating every 30 seconds so volunteer stays current
     const watchId = navigator.geolocation.watchPosition(
       updateLocation,
       (err) => console.warn('GPS watch error:', err.message),
@@ -27,7 +29,7 @@ const useLocationUpdater = (user) => {
     )
 
     return () => navigator.geolocation.clearWatch(watchId)
-  }, [user])
+  }, [user, isOnDuty])
 }
 
 export default useLocationUpdater
