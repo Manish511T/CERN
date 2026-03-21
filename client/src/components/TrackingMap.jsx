@@ -99,7 +99,7 @@ const TrackingMap = ({
   victimId, // used by volunteer to know where to emit
   volunteerName,
   onClose,
-  onEndSession
+  onEndSession,
 }) => {
   const [volunteerPos, setVolunteerPos] = useState(null);
   const [distance, setDistance] = useState(null);
@@ -111,63 +111,61 @@ const TrackingMap = ({
     : null;
 
   // VOLUNTEER: watch own GPS and broadcast to victim every 3 seconds
-  useEffect(() => {
-    if (role !== "volunteer") return;
+useEffect(() => {
+  if (role !== 'volunteer') return
 
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    };
+  const options = {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 0
+  }
 
-    const broadcast = (pos) => {
-      const { latitude, longitude, accuracy } = pos.coords;
+  let lastEmitTime = 0  // throttle tracker
 
-      // Skip readings worse than 100 meters accuracy
-      if (accuracy > 100) {
-        console.warn(`GPS accuracy too low: ${accuracy}m — skipping`);
-        return;
-      }
+  const broadcast = (pos) => {
+    const { latitude, longitude, accuracy } = pos.coords
+    const now = Date.now()
 
-      console.log(
-        `Volunteer GPS: ${latitude}, ${longitude} (accuracy: ${accuracy}m)`,
-      );
-      setVolunteerPos([latitude, longitude]);
+    // Only accept readings with 5-10m accuracy
+    if (accuracy > 10) {
+      console.warn(`Skipping — accuracy: ${accuracy}m (need ≤ 10m)`)
+      return
+    }
 
-      if (victimLocation) {
-        const dist = getDistanceMeters(
-          latitude,
-          longitude,
-          victimLocation.latitude,
-          victimLocation.longitude,
-        );
-        setDistance(dist);
-        setEta(getETA(dist));
-      }
+    // Only emit every 3 seconds minimum
+    if (now - lastEmitTime < 3000) return
+    lastEmitTime = now
 
-      socket.emit("volunteer:location", {
-        sosId,
-        latitude,
-        longitude,
-        toUserId: victimId,
-      });
-    };
+    console.log(`Emitting location — accuracy: ${accuracy}m`)
+    setVolunteerPos([latitude, longitude])
 
-    const onError = (err) => {
-      console.error("Volunteer GPS error:", err.message);
-    };
+    if (victimLocation) {
+      const dist = getDistanceMeters(
+        latitude, longitude,
+        victimLocation.latitude, victimLocation.longitude
+      )
+      setDistance(dist)
+      setEta(getETA(dist))
+    }
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      broadcast,
-      onError,
-      options,
-    );
+    socket.emit('volunteer:location', {
+      sosId,
+      latitude,
+      longitude,
+      toUserId: victimId
+    })
+  }
 
-    return () => {
-      if (watchIdRef.current)
-        navigator.geolocation.clearWatch(watchIdRef.current);
-    };
-  }, [role, sosId, victimId, victimLocation]);
+  watchIdRef.current = navigator.geolocation.watchPosition(
+    broadcast,
+    (err) => console.error('GPS error:', err.message),
+    options
+  )
+
+  return () => {
+    if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current)
+  }
+}, [role, sosId, victimId, victimLocation])
 
   // VICTIM: listen for volunteer's location updates
   useEffect(() => {
