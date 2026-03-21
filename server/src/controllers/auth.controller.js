@@ -164,3 +164,23 @@ export const refreshToken = async (req, res) => {
     res.status(401).json({ message: 'Session expired, please login again' })
   }
 }
+
+
+export const toggleDuty = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+    if (user.role !== 'volunteer') {
+      return res.status(403).json({ message: 'Only volunteers can toggle duty' })
+    }
+
+    user.isOnDuty = !user.isOnDuty
+    await user.save()
+
+    res.json({
+      message: user.isOnDuty ? 'You are now on duty' : 'You are now off duty',
+      isOnDuty: user.isOnDuty
+    })
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}

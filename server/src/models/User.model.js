@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isOnDuty: {
+    type: Boolean,
+    default: false  // off by default
   }
 }, { timestamps: true })
 

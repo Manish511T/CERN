@@ -1,5 +1,5 @@
 import express from 'express'
-import { register, login, logout, getMe,refreshToken } from '../controllers/auth.controller.js'
+import { register, login, logout, getMe,refreshToken,toggleDuty } from '../controllers/auth.controller.js'
 import { protect } from '../middleware/auth.middleware.js'
 
 const router = express.Router()
@@ -9,5 +9,6 @@ router.post('/refresh', refreshToken)
 router.post('/login', login)
 router.post('/logout', logout)
 router.get('/me', protect, getMe)   // protected route
+router.patch('/duty', protect, toggleDuty)
 
 export default router

@@ -38,6 +38,7 @@ export const triggerSOS = async (req, res) => {
     // Find nearby volunteers within 5km
     let volunteersToNotify = await User.find({
       role: 'volunteer',
+      isOnDuty: true,
       _id: { $ne: req.user._id },
       location: {
         $near: {
@@ -55,6 +56,7 @@ export const triggerSOS = async (req, res) => {
       console.log('No nearby volunteers — notifying all online volunteers')
       volunteersToNotify = await User.find({
         role: 'volunteer',
+        isOnDuty: true, 
         _id: { $ne: req.user._id }
       }).select('_id name')
     }
