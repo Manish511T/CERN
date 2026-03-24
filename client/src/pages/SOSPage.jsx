@@ -332,15 +332,31 @@ const SOSPage = () => {
               className="w-full h-36 object-cover rounded-xl mb-2"
             />
           )}
-          <label className="flex items-center justify-center gap-2 border border-dashed border-gray-300 rounded-xl py-3 cursor-pointer hover:border-red-300 transition text-sm text-gray-500">
-            📷 {photo ? "Change photo" : "Add a photo"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handlePhoto}
-            />
-          </label>
+          
+          <div className="flex gap-2">
+            {/* Open camera directly — capture="environment" uses rear camera */}
+            <label className="flex-1 flex items-center justify-center gap-2 bg-red-50 border border-red-200 rounded-xl py-3 cursor-pointer hover:border-red-400 transition text-sm text-red-600 font-medium">
+              📸 Take Photo
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handlePhoto}
+              />
+            </label>
+
+            {/* Open gallery — choose existing photo */}
+            <label className="flex-1 flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-xl py-3 cursor-pointer hover:border-red-300 transition text-sm text-gray-500">
+              🖼️ Gallery
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhoto}
+              />
+            </label>
+          </div>
         </div>
 
         <div>
